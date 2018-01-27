@@ -1,6 +1,7 @@
 import * as babel from 'babel-core';
 export { plugin } from './stopify/stopifyCallCC';
 import *  as types from './types';
+import { compileFunction } from './stopify/compileFunction'
 export { compileFunction } from './stopify/compileFunction'
 import * as smc from 'convert-source-map';
 import { generateLineMapping, LineMapping } from './sourceMaps';
@@ -30,6 +31,25 @@ function stopifyPack(srcPath: string, opts: types.CompilerOpts): Promise<string>
   });
 }
 
+export function stopifySourceSync(src: string, opts: types.CompilerOpts): string {
+  const babelOpts = {
+    plugins: [[ stopifyCallCC, opts ]],
+    babelrc: false,
+    ast: false,
+    code: true,
+    minified: true,
+    comments: false,
+  };
+
+  const { ast, code, map } = babel.transform(src, babelOpts);
+  return code!;
+}
+
+export function stopifySource(src: string, opts: types.CompilerOpts): Promise<string> {
+  return new Promise((resolve, reject) =>
+    resolve(stopifySourceSync(src, opts)));
+}
+
 export function stopify(srcPath: string, opts: types.CompilerOpts): Promise<string> {
 
   if (opts.captureMethod === 'original') {
@@ -49,25 +69,24 @@ export function stopify(srcPath: string, opts: types.CompilerOpts): Promise<stri
       const map = mapConverter ? mapConverter.toObject() : null;
       return { src: src, sourceMap: generateLineMapping(<RawSourceMap>map) };
     })
-    .then(({src, sourceMap}) => {
+    .then(({src, sourceMap}) =>
+      stopifySource(src, opts));
+}
 
-      const babelOpts = {
-        plugins: [[ stopifyCallCC, opts ]],
-        babelrc: false,
-        ast: false,
-        code: true,
-        minified: true,
-        comments: false,
-      };
+export function stopifyEvalCode(code: string, renames: { [key: string]: string }, boxes: string[]): string {
 
-      return new Promise((resolve, reject) =>
-        babel.transformFile(srcPath, babelOpts, (err, result) => {
-          if (err !== null) {
-            return reject(err);
-          }
-          const { code } = result;
-          return resolve(code!);
-        }));
-      });
-
+  const transformed = compileFunction(code, <any>{
+    debug: false,
+    captureMethod: 'lazy',
+    newMethod: 'wrapper',
+    eval: false,
+    es: 'sane',
+    hofs: 'builtin',
+    jsArgs: 'simple',
+    requireRuntime: true,
+    noWebpack: true,
+    renames,
+    boxes
+  });
+  return transformed!;
 }

@@ -41,19 +41,19 @@ const insertSuspend: Visitor = {
     }
   },
 
-  Program: {
-    exit(path: NodePath<t.Program>, { opts }) {
-      if(opts.compileFunction) {
-        if(path.node.body[0].type === 'FunctionDeclaration') {
-          (<any>path.node.body[0]).topFunction = true
-        }
-        else {
-          throw new Error(
-            `Compile function expected top-level functionDeclaration`)
-        }
-      }
-    }
-  },
+//  Program: {
+//    exit(path: NodePath<t.Program>, { opts }) {
+//      if(opts.compileFunction) {
+//        if(path.node.body[0].type === 'FunctionDeclaration') {
+//          (<any>path.node.body[0]).topFunction = true
+//        }
+//        else {
+//          throw new Error(
+//            `Compile function expected top-level functionDeclaration`)
+//        }
+//      }
+//    }
+//  },
 }
 
 export default function () {

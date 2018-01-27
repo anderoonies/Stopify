@@ -28,6 +28,11 @@ commander.option(
   'sane');
 
 commander.option(
+  '--eval',
+  'Support eval',
+  false);
+
+commander.option(
   '--hofs <mode>',
   'either builtin or fill (default: builtin)',
   parseArg(x => x, x => /^(builtin|fill)$/.test(x),
@@ -62,6 +67,7 @@ export const compilerOpts: CompilerOpts = {
   debug: args.debug,
   captureMethod: args.transform,
   newMethod: args.new,
+  eval: args.eval,
   es: args.es,
   hofs: args.hofs,
   jsArgs: args.jsArgs,

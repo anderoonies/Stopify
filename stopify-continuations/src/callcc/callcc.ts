@@ -13,6 +13,7 @@ import * as desugarLogical from '../common/desugarLogical';
 import * as singleVarDecls from '../common/singleVarDecls';
 import * as makeBlocks from '../common/makeBlockStmt';
 import * as boxAssignables from './boxAssignables';
+import * as supportEval from './eval';
 import * as desugarNew from '../common/desugarNew';
 import * as anf from '../common/anf';
 import * as label from './label';
@@ -37,6 +38,7 @@ import * as types from '../types';
 import { transformFile } from 'babel-core';
 
 const $__R = t.identifier('$__R')
+const $__C = t.identifier('$__C')
 
 const visitor: Visitor = {
   Program(path: NodePath<t.Program>, state) {
@@ -55,11 +57,15 @@ const visitor: Visitor = {
     }
 
     timeSlow('singleVarDecl', () =>
-      h.transformFromAst(path, [singleVarDecls]));
+      h.transformFromAst(path, [[singleVarDecls, opts]]));
     timeSlow('free ID initialization', () =>
-      freeIds.annotate(path));
+      freeIds.annotate(path, opts.eval));
     timeSlow('box assignables', () =>
       h.transformFromAst(path, [[boxAssignables.plugin, opts]]));
+    if (opts.eval) {
+      timeSlow('instrument eval calls', () =>
+        h.transformFromAst(path, [[supportEval.plugin, opts]]));
+    }
 
 
     timeSlow('desugaring passes', () =>
@@ -79,14 +85,17 @@ const visitor: Visitor = {
     timeSlow('jumper', () =>
       h.transformFromAst(path, [[jumper.plugin, opts]]));
 
+    path.stop();
+
     let toShift;
     if ((<any>opts).compileFunction) {
-      if (t.isFunctionDeclaration(path.node.body[0])) {
-        toShift = (<t.FunctionDeclaration>path.node.body[0]).body.body
-      }
-      else {
-        throw new Error('Top-level function expected')
-      }
+//      if (t.isFunctionDeclaration(path.node.body[0])) {
+//        toShift = (<t.FunctionDeclaration>path.node.body[0]).body.body
+//      }
+//      else {
+//        throw new Error('Top-level function expected')
+//      }
+      toShift = path.node.body
     }
     else {
       toShift = path.node.body
@@ -139,8 +148,14 @@ const visitor: Visitor = {
                 [t.stringLiteral('stopify-continuations/dist/src/runtime/runtime')]),
           'const'));
     }
-
-    path.stop();
+    if (opts.eval) {
+      path.node.body.unshift(
+        h.letExpression(
+          $__C,
+          t.callExpression(t.identifier('require'),
+            [t.stringLiteral('stopify/dist/src/index')]),
+          'const'));
+    }
   }
 };
 

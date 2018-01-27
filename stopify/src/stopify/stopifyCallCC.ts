@@ -67,7 +67,7 @@ export const visitor: Visitor = {
     if (opts.requireRuntime) {
       // var $S = require('stopify/dist/src/runtime/rts').init($__R);;
 
-      path.node.body.splice(2, 0,
+      path.node.body.splice(opts.eval ? 3 : 2, 0,
       t.variableDeclaration('var',
           [t.variableDeclarator(
             t.identifier('$S'),
@@ -80,7 +80,7 @@ export const visitor: Visitor = {
     }
     else {
       // var $S = stopify.init($__R);
-      path.node.body.splice(2, 0,
+      path.node.body.splice(opts.eval ? 3 : 2, 0,
         t.variableDeclaration('var',
             [t.variableDeclarator(
               t.identifier('$S'),

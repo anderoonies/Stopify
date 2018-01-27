@@ -19,10 +19,10 @@ import { CaptureMethod, HandleNew } from '../types';
 const visitor: Visitor = {
   Program(path: NodePath<t.Program>, { opts }) {
     path.stop()
-    assert.equal(path.node.body.length, 1)
-    const func = path.node.body[0]
-    assert.equal(func.type, 'FunctionDeclaration',
-      'Must compile a top-level function')
+//    assert.equal(path.node.body.length, 1)
+//    const func = path.node.body[0]
+//    assert.equal(func.type, 'FunctionDeclaration',
+//      'Must compile a top-level function')
     callcc.transformFromAst(path, [[stopifyCallCC.plugin, opts]])
   }
 }
