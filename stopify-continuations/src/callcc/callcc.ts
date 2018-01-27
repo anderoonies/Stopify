@@ -69,13 +69,13 @@ const visitor: Visitor = {
     timeSlow('desugar logical', () =>
       h.transformFromAst(path, [desugarLogical]));
     timeSlow('ANF', () =>
-      h.transformFromAst(path, [anf]));
+      h.transformFromAst(path, [[anf, opts]]));
     timeSlow('declVars', () =>
       h.transformFromAst(path, [declVars]));
     timeSlow('delimit', () =>
       h.transformFromAst(path, [[delimitTopLevel, opts]]));
     timeSlow('label', () =>
-      h.transformFromAst(path, [label.plugin]));
+      h.transformFromAst(path, [[label.plugin, opts]]));
     timeSlow('jumper', () =>
       h.transformFromAst(path, [[jumper.plugin, opts]]));
 

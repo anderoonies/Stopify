@@ -3,6 +3,11 @@ import * as t from 'babel-types';
 import { NodePath, Visitor } from 'babel-traverse';
 import { SourceMapConsumer, RawSourceMap } from 'source-map';
 import * as smc from 'convert-source-map';
+import { CompilerOpts } from '../types'
+
+export interface State {
+  opts: CompilerOpts
+}
 
 export type FunctionNode =
   t.FunctionDeclaration | t.FunctionExpression | t.ObjectMethod;
@@ -58,6 +63,12 @@ const transformed = <T>(t: T) => tag('isTransformed', t, true);
 const kArg = <T>(t: T, v: t.Identifier) => tag('kArg', t, v);
 const newTag = <T>(t: T) => tag('new', t, true);
 
+/**
+ * containsCallVisitor visitor modifies the field contains call in the state
+ * object if the path contains a function call . If the field getters in the
+ * state object is true, the visitor also sets containsCall to true if there
+ * are memberExpressions
+ */
 const containsCallVisitor = {
   FunctionExpression(path: NodePath<t.FunctionExpression>): void {
     path.skip();
@@ -73,13 +84,26 @@ const containsCallVisitor = {
     this.containsCall = true;
     path.stop();
   },
+
+  MemberExpression(path: NodePath<t.MemberExpression>): void {
+    if(this.getters) {
+      this.containsCall = true
+      path.stop()
+    }
+  }
 };
 
 /**
  * Traverses children of `path` and returns true if it contains any applications.
  */
 export function containsCall<T>(path: NodePath<T>) {
-  let o = { containsCall: false };
+  let o = { containsCall: false, getters: false };
+  path.traverse(containsCallVisitor, o);
+  return o.containsCall;
+}
+
+export function containsCallOrAcces<T>(path: NodePath<T>) {
+  let o = { containsCall: false, getters: true };
   path.traverse(containsCallVisitor, o);
   return o.containsCall;
 }

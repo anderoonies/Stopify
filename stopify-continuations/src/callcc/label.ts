@@ -3,6 +3,7 @@ import * as t from 'babel-types';
 import { cannotCapture } from '../common/cannotCapture';
 import * as bh from '../babelHelpers';
 import * as imm from 'immutable';
+import { CompilerOpts } from '../types'
 
 export enum AppType {
   None = 0,
@@ -18,7 +19,8 @@ export type Labeled<T> = T & {
 
 type VisitorState = {
   inTryBlock: boolean,
-  inTryBlockStack: boolean[]
+  inTryBlockStack: boolean[],
+  opts: CompilerOpts,
 }
 
 function joinAppType(x: AppType, y: AppType): AppType {
@@ -66,7 +68,7 @@ function getAppType(node: t.Statement | null): AppType {
   return (<Labeled<t.Statement>>(<any>node)).appType!;
 }
 
-// true if the expression is a function call that may capture a continuation
+// true if the expression is a function call that may capture a continuation.
 function isUnsafeCall(e: t.Expression): boolean {
   return ((t.isCallExpression(e) || t.isNewExpression(e)) && !cannotCapture(e));
 }
@@ -125,12 +127,17 @@ const visitor: Visitor = {
 
   ReturnStatement: {
     exit(this: VisitorState, path: NodePath<Labeled<t.ReturnStatement>>) {
+      const arg = path.node.argument;
       // Assumes no nested calls.
-      const isCall = isUnsafeCall(path.node.argument);
-      if (!isCall) {
+      const isCall = isUnsafeCall(arg);
+      if (this.opts.getters && t.isMemberExpression(arg)) {
+        path.node.appType = AppType.Mixed;
+      }
+      else if (!isCall) {
         path.node.appType = AppType.None;
       }
-      else if (this.inTryBlock) {
+      else if (this.inTryBlock ||
+        (this.opts.getters && t.isMemberExpression(arg))) {
         path.node.appType = AppType.Mixed;
       }
       else {
@@ -139,12 +146,18 @@ const visitor: Visitor = {
     }
   },
 
-  CallExpression: function (path: NodePath<Labeled<t.CallExpression>>): void {
+  CallExpression(path: NodePath<Labeled<t.CallExpression>>): void {
     path.node.labels = [counter++];
   },
 
-  NewExpression: function (path: NodePath<Labeled<t.NewExpression>>): void {
+  NewExpression(path: NodePath<Labeled<t.NewExpression>>): void {
     path.node.labels = [counter++];
+  },
+
+  MemberExpression(this: VisitorState, path: NodePath<Labeled<t.NewExpression>>) {
+    if(this.opts.getters) {
+      path.node.labels = [counter++]
+    }
   },
 
   AssignmentExpression: {
@@ -160,11 +173,17 @@ const visitor: Visitor = {
   },
 
   ExpressionStatement: {
-    exit(path: NodePath<Labeled<t.ExpressionStatement>>): void {
-      const unsafe = t.isAssignmentExpression(path.node.expression) &&
-        isUnsafeCall(path.node.expression.right);
-      path.node.labels = getLabels(path.node.expression);
-      path.node.appType = unsafe ? AppType.Mixed : AppType.None;
+    exit(this: VisitorState, path: NodePath<Labeled<t.ExpressionStatement>>): void {
+      path.node.labels = getLabels(path.node.expression)
+      if (t.isAssignmentExpression(path.node.expression)) {
+        path.node.appType =
+          isUnsafeCall(path.node.expression.right) ?
+          //(this.opts.getters && t.isMemberExpression(path.node.expression.right)) ?
+          AppType.Mixed : AppType.None
+      }
+      else {
+        path.node.appType = AppType.None;
+      }
     }
   },
 

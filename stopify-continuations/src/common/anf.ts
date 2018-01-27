@@ -11,15 +11,24 @@ import {NodePath, VisitNode, Visitor} from 'babel-traverse';
 import * as t from 'babel-types';
 import * as h from './helpers';
 import * as fastFreshId from '../fastFreshId';
+import { State } from './helpers'
 
 function withinTryBlock(path: NodePath<t.Node>): boolean {
   const funOrTryParent = path.findParent(p => p.isFunction() || p.isTryStatement());
   return t.isTryStatement(funOrTryParent);
 }
 
+let doAnf = function<T>(path: NodePath<T>): boolean {
+  throw new Error('doAnf was not defined')
+}
+
 const anfVisitor : Visitor = {
+  Program(path: NodePath<t.Program>, state: State) {
+    doAnf = state.opts.getters ? h.containsCallOrAcces : h.containsCall
+  },
+
   ArrayExpression: function (path: NodePath<t.ArrayExpression>): void {
-    if (!h.containsCall(path)) {
+    if (!doAnf(path)) {
       return;
     }
     const { elements } = path.node;
@@ -31,7 +40,7 @@ const anfVisitor : Visitor = {
   },
 
   ObjectExpression: function (path: NodePath<t.ObjectExpression>): void {
-    if (!h.containsCall(path)) {
+    if (!doAnf(path)) {
       return;
     }
     const { properties } = path.node;
@@ -47,7 +56,7 @@ const anfVisitor : Visitor = {
 
   CallExpression: {
     enter(path: NodePath<t.CallExpression>): void {
-      if (h.containsCall(path)) {
+      if (doAnf(path)) {
         if (t.isCallExpression(path.node.callee)) {
           const id = fastFreshId.fresh('callee');
           path.getStatementParent().insertBefore(
@@ -100,6 +109,31 @@ const anfVisitor : Visitor = {
       path.replaceWith(name);
     }
   },
+
+  MemberExpression(path: NodePath<t.MemberExpression>, state: State): void {
+    const p = path.parent
+    if(state.opts.getters &&
+        !t.isVariableDeclarator(p) &&
+        !t.isUpdateExpression(p) &&
+        !t.isAssignmentExpression(p) &&
+        (<any>path.node).mark !== 'Flat') {
+      const name = fastFreshId.fresh('mem');
+      const bind = h.letExpression(name, path.node);
+      const { object } = path.node
+      path.getStatementParent().insertBefore(bind);
+      path.replaceWith(name)
+
+      // If the parent is a call expression, `this` needs to be rebound.
+      if (t.isCallExpression(p)) {
+        const { callee, arguments:args } = p
+        const call = t.memberExpression(callee, t.identifier('call'));
+        (<any>call).mark = 'Flat';
+        const boundCall = t.callExpression(call, [object, ...args]);
+
+        path.parentPath.replaceWith(boundCall)
+      }
+    }
+  }
 }
 
 module.exports = function() {

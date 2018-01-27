@@ -99,7 +99,7 @@ export const visitor: Visitor = {
             t.blockStatement([
               t.expressionStatement(
                 t.callExpression(
-                  t.memberExpression(t.identifier('$S'), t.identifier('onEnd')), 
+                  t.memberExpression(t.identifier('$S'), t.identifier('onEnd')),
                   []))]))])));
   }
 }

@@ -8,6 +8,7 @@ export interface CompilerOpts {
   es: 'sane' | 'es5',
   hofs: 'builtin' | 'fill',
   jsArgs: 'simple' | 'faithful',
+  getters: boolean,
   requireRuntime: boolean,
   noWebpack: boolean
 }

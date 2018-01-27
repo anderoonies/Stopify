@@ -56,7 +56,7 @@ export function stopify(srcPath: string, opts: types.CompilerOpts): Promise<stri
         babelrc: false,
         ast: false,
         code: true,
-        minified: true,
+        minified: false,
         comments: false,
       };
 

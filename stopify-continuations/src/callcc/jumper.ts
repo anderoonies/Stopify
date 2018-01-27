@@ -6,8 +6,9 @@ import * as fastFreshId from '../fastFreshId';
 import * as generic from '../generic';
 import { getLabels, AppType } from './label';
 import * as imm from 'immutable';
-import { CompilerOpts, CaptureMethod, HandleNew } from '../types';
+import { CaptureMethod, HandleNew } from '../types';
 import { box } from './boxAssignables';
+import { State } from '../common/helpers'
 
 type FunctionT = (t.FunctionExpression | t.FunctionDeclaration) & {
   localVars: t.Identifier[]
@@ -19,10 +20,6 @@ type Labeled<T> = T & {
   __usesArgs__?: boolean
 }
 type CaptureFun = (path: NodePath<t.AssignmentExpression>) => void;
-
-interface State {
-  opts: CompilerOpts
-}
 
 const captureLogics: { [key: string]: CaptureFun } = {
   lazy: lazyCaptureLogic,
