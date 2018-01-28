@@ -78,8 +78,10 @@ const visitor: Visitor = {
       h.transformFromAst(path, [anf]));
     timeSlow('declVars', () =>
       h.transformFromAst(path, [declVars]));
-    timeSlow('delimit', () =>
-      h.transformFromAst(path, [[delimitTopLevel, opts]]));
+    if (!(<any>opts).renames) {
+      timeSlow('delimit', () =>
+        h.transformFromAst(path, [[delimitTopLevel, opts]]));
+    }
     timeSlow('label', () =>
       h.transformFromAst(path, [label.plugin]));
     timeSlow('jumper', () =>

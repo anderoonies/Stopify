@@ -7,6 +7,7 @@
  */
 import * as t from 'babel-types';
 import * as babel from 'babel-core';
+import * as fastFreshId from '../fastFreshId';
 import { NodePath, Visitor } from 'babel-traverse';
 
 const visitor = {
@@ -47,8 +48,12 @@ const visitor = {
       this.boxed.filter((x: any) => !!x).forEach((set: Set<string>) =>
           set.forEach(x => vars.add(x)));
 
-      path.node.arguments = [t.callExpression(t.memberExpression(t.identifier("$__C"), t.identifier("stopifyEvalCode")),
-        [...path.node.arguments, t.objectExpression(props), t.arrayExpression(Array.from(vars).map(x => t.stringLiteral(x)))])];
+      const evalBlock = t.blockStatement([t.returnStatement(t.callExpression(t.identifier('eval'),
+        [t.callExpression(t.memberExpression(t.identifier("$__C"), t.identifier("stopifyEvalCode")),
+        [...path.node.arguments, t.objectExpression(props), t.arrayExpression(Array.from(vars).map(x => t.stringLiteral(x)))])]))]);
+      path.node.callee = t.functionExpression(fastFreshId.fresh('funExpr'), [], evalBlock);
+      path.node.arguments = [];
+      path.skip();
     }
   }
 }

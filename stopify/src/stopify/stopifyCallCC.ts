@@ -64,7 +64,7 @@ export const visitor: Visitor = {
 
     callcc.fastFreshId.cleanup()
 
-    if (opts.requireRuntime) {
+    if (opts.requireRuntime && !(<any>opts).renames) {
       // var $S = require('stopify/dist/src/runtime/rts').init($__R);;
 
       path.node.body.splice(opts.eval ? 3 : 2, 0,
@@ -78,7 +78,7 @@ export const visitor: Visitor = {
                 t.identifier('init')),
                 [t.identifier('$__R')]))]));
     }
-    else {
+    else if (!(<any>opts).renames) {
       // var $S = stopify.init($__R);
       path.node.body.splice(opts.eval ? 3 : 2, 0,
         t.variableDeclaration('var',
