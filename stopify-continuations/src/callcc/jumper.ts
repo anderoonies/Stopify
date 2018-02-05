@@ -119,7 +119,14 @@ function func(path: NodePath<Labeled<FunctionT>>, state: State): void {
     : t.callExpression(t.memberExpression(path.node.id, t.identifier('call')),
       [t.thisExpression(), ...<any>path.node.params]);
   const reenterClosure = t.variableDeclaration('var', [
-    t.variableDeclarator(restoreNextFrame, t.arrowFunctionExpression([], reenterExpr))]);
+    t.variableDeclarator(restoreNextFrame, t.arrowFunctionExpression([],
+      t.blockStatement(path.node.__usesArgs__ ?
+        [t.expressionStatement(t.assignmentExpression('=',
+          t.memberExpression(matArgs, t.identifier('length')),
+          t.memberExpression(t.callExpression(t.memberExpression(t.identifier('Object'),
+            t.identifier('keys')), [matArgs]), t.identifier('length')))),
+          t.returnStatement(reenterExpr)] :
+        [t.returnStatement(reenterExpr)])))]);
 
   const mayMatArgs: t.Statement[] = [];
   if (path.node.__usesArgs__) {
