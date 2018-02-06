@@ -51,6 +51,7 @@ const captureFrameId = t.identifier('frame');
 const runtime = t.identifier('$__R');
 const types = t.identifier('$__T');
 const matArgs = t.identifier('materializedArguments');
+const argsLen = t.identifier('argsLen');
 const runtimeModeKind = t.memberExpression(runtime, t.identifier('mode'));
 const runtimeStack = t.memberExpression(runtime, t.identifier('stack'));
 const eagerStack = t.memberExpression(runtime, t.identifier('eagerStack'));
@@ -98,6 +99,16 @@ function func(path: NodePath<Labeled<FunctionT>>, state: State): void {
     t.expressionStatement(t.assignmentExpression('=',
       t.arrayPattern(restoreLocals), t.memberExpression(topOfRuntimeStack,
         t.identifier('locals')))),
+    path.node.__usesArgs__ && state.opts.jsArgs === 'full' ?
+    t.expressionStatement(t.assignmentExpression('=',
+      t.arrayPattern((<any>path.node.params)), t.memberExpression(topOfRuntimeStack,
+        t.identifier('formals')))) :
+    t.emptyStatement(),
+    path.node.__usesArgs__ && state.opts.jsArgs === 'full' ?
+    t.expressionStatement(t.assignmentExpression('=',
+      t.memberExpression(t.identifier('arguments'), t.identifier('length')),
+      t.memberExpression(topOfRuntimeStack, argsLen))) :
+    t.emptyStatement(),
     t.expressionStatement(t.assignmentExpression('=', target,
       t.memberExpression(topOfRuntimeStack, t.identifier('index')))),
     t.expressionStatement(popRuntimeStack)
@@ -108,6 +119,16 @@ function func(path: NodePath<Labeled<FunctionT>>, state: State): void {
     t.expressionStatement(t.assignmentExpression('=',
       t.memberExpression(captureFrameId, t.identifier('locals')),
       t.arrayExpression(restoreLocals))),
+    path.node.__usesArgs__ && state.opts.jsArgs === 'full' ?
+    t.expressionStatement(t.assignmentExpression('=',
+      t.memberExpression(captureFrameId, t.identifier('formals')),
+      t.arrayExpression((<any>path.node.params)))) :
+    t.emptyStatement(),
+    path.node.__usesArgs__ && state.opts.jsArgs === 'full' ?
+    t.expressionStatement(t.assignmentExpression('=',
+      t.memberExpression(captureFrameId, argsLen),
+      argsLen)) :
+    t.emptyStatement(),
   ]);
   const captureClosure = t.functionDeclaration(captureLocals,
     [captureFrameId], captureBody);
@@ -130,17 +151,20 @@ function func(path: NodePath<Labeled<FunctionT>>, state: State): void {
 
   const mayMatArgs: t.Statement[] = [];
   if (path.node.__usesArgs__) {
-    const argExpr = jsArgs === 'faithful'
+    const argExpr = jsArgs === 'faithful' || jsArgs === 'full'
       ? bh.arrayPrototypeSliceCall(t.identifier('arguments'))
       : t.identifier('arguments');
 
     mayMatArgs.push(
       t.variableDeclaration('const',
-        [t.variableDeclarator(matArgs, argExpr)]));
+        [t.variableDeclarator(matArgs, argExpr)]),
+      t.variableDeclaration('const',
+        [t.variableDeclarator(argsLen,
+          t.memberExpression(t.identifier('arguments'), t.identifier('length')))]));
 
     const boxedArgs = <imm.Set<string>>(<any>path.node).boxedArgs;
 
-    if (jsArgs === 'faithful') {
+    if (jsArgs === 'faithful' || jsArgs === 'full') {
       const argLen = t.memberExpression(t.identifier('arguments'),
         t.identifier('length'));
       const initMatArgs: t.Statement[] = [];
@@ -364,6 +388,12 @@ function isNormalGuarded(stmt: t.Statement): stmt is t.IfStatement {
 }
 
 const jumper = {
+  Identifier: function (path: NodePath<t.Identifier>, s: State): void {
+    if (s.opts.jsArgs === 'full' && path.node.name === 'arguments') {
+      path.node.name = 'materializedArguments';
+    }
+  },
+
   BlockStatement: {
     exit(path: NodePath<Labeled<t.BlockStatement>>) {
       const stmts = path.node.body;

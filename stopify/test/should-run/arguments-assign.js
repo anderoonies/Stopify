@@ -1,16 +1,25 @@
 const assert = require('assert');
 
-let y = 7;
+const suspend = function () { while (false) {} }
 
-function suspend() { while (false) {} }
-
-function F(x) {
+const F = function (x) {
   'use strict';
-  arguments[1] = y;
-  y = 10;
+  arguments[1] = x;
+  x = 10;
   suspend();
-  assert.equal(arguments[1], 7);
+  assert.equal(arguments[0], 200);
+  assert.equal(arguments[1], 200);
   return x;
 }
-
-F(200);
+//
+//const G = function (x) {
+//  arguments[1] = x;
+//  x = 10;
+//  suspend();
+//  assert.equal(arguments[0], 10);
+//  assert.equal(arguments[1], 200);
+//  return x;
+//}
+//
+assert.equal(F(200), 10);
+//assert.equal(G(200), 10);

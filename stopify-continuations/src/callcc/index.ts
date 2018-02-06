@@ -28,4 +28,6 @@ export const reserved = [
   "finally_rv",
   "finally_exn",
   "captureCC",
+  'materializedArguments',
+  'argsLen',
 ];
