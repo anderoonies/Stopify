@@ -106,8 +106,7 @@ function func(path: NodePath<Labeled<FunctionT>>, state: State): void {
     t.emptyStatement(),
     path.node.__usesArgs__ && state.opts.jsArgs === 'full' ?
     t.expressionStatement(t.assignmentExpression('=',
-      t.memberExpression(t.identifier('arguments'), t.identifier('length')),
-      t.memberExpression(topOfRuntimeStack, argsLen))) :
+      argsLen, t.memberExpression(topOfRuntimeStack, argsLen))) :
     t.emptyStatement(),
     t.expressionStatement(t.assignmentExpression('=', target,
       t.memberExpression(topOfRuntimeStack, t.identifier('index')))),
@@ -157,10 +156,7 @@ function func(path: NodePath<Labeled<FunctionT>>, state: State): void {
 
     mayMatArgs.push(
       t.variableDeclaration('const',
-        [t.variableDeclarator(matArgs, argExpr)]),
-      t.variableDeclaration('const',
-        [t.variableDeclarator(argsLen,
-          t.memberExpression(t.identifier('arguments'), t.identifier('length')))]));
+        [t.variableDeclarator(matArgs, argExpr)]));
 
     const boxedArgs = <imm.Set<string>>(<any>path.node).boxedArgs;
 
@@ -181,6 +177,9 @@ function func(path: NodePath<Labeled<FunctionT>>, state: State): void {
   }
 
   path.node.body.body.unshift(...[
+    t.variableDeclaration('let',
+      [t.variableDeclarator(argsLen,
+        t.memberExpression(t.identifier('arguments'), t.identifier('length')))]),
     ifRestoring,
     captureClosure,
     reenterClosure,
@@ -389,7 +388,12 @@ function isNormalGuarded(stmt: t.Statement): stmt is t.IfStatement {
 
 const jumper = {
   Identifier: function (path: NodePath<t.Identifier>, s: State): void {
-    if (s.opts.jsArgs === 'full' && path.node.name === 'arguments') {
+    if (s.opts.jsArgs === 'full' && path.node.name === 'arguments' &&
+      (t.isMemberExpression(path.parent) &&
+        path.parent.property.type === 'Identifier' &&
+        path.parent.property.name === 'length')) {
+      path.parentPath.replaceWith(argsLen);
+    } else if (s.opts.jsArgs === 'full' && path.node.name === 'arguments') {
       path.node.name = 'materializedArguments';
     }
   },
