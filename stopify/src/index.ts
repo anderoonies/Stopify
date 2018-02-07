@@ -73,11 +73,11 @@ export function stopify(srcPath: string, opts: types.CompilerOpts): Promise<stri
       stopifySource(src, opts));
 }
 
-export function stopifyEvalCode(code: string, renames: { [key: string]: string }, boxes: string[]): string {
+export function stopifyEvalCode(code: string, type: string, renames: { [key: string]: string }, boxes: string[]): string {
 
   const transformed = compileFunction(code, <any>{
     debug: false,
-    captureMethod: 'lazy',
+    captureMethod: type,
     newMethod: 'wrapper',
     eval: false,
     es: 'sane',
@@ -88,5 +88,5 @@ export function stopifyEvalCode(code: string, renames: { [key: string]: string }
     renames,
     boxes
   });
-  return transformed!;
+  return `(function () { ${transformed!} })()`;
 }

@@ -1,6 +1,5 @@
 /**
- * This transformation boxes certain assignable variables to preserve
- * reference equality when the stack is reconstructed.
+ * This transformation dynamically invokes stopify on `eval`'d strings.
  *
  * Preconditions:
  * 1. The freeIds pass has been applied.
@@ -49,8 +48,12 @@ const visitor = {
           set.forEach(x => vars.add(x)));
 
       const evalBlock = t.blockStatement([t.returnStatement(t.callExpression(t.identifier('eval'),
-        [t.callExpression(t.memberExpression(t.identifier("$__C"), t.identifier("stopifyEvalCode")),
-        [...path.node.arguments, t.objectExpression(props), t.arrayExpression(Array.from(vars).map(x => t.stringLiteral(x)))])]))]);
+        [t.callExpression(t.memberExpression(t.identifier("$__C"), t.identifier("stopifyEvalCode")), [
+          ...path.node.arguments,
+          t.memberExpression(t.identifier('$__R'), t.identifier('type')),
+          t.objectExpression(props),
+          t.arrayExpression(Array.from(vars).map(x => t.stringLiteral(x)))
+        ])]))]);
       path.node.callee = t.functionExpression(fastFreshId.fresh('funExpr'), [], evalBlock);
       path.node.arguments = [];
       path.skip();

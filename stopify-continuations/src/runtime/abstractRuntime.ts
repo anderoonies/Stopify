@@ -43,6 +43,8 @@ export class Capture {
 }
 
 interface RuntimeInterface {
+  type: string;
+
   captureCC(f: (k: any) => any): void;
   // Wraps a stack in a function that throws an exception to discard the current
   // continuation. The exception carries the provided stack with a final frame
@@ -54,6 +56,7 @@ interface RuntimeInterface {
 }
 
 export abstract class Runtime {
+  public type: string;
   stack: Stack;
   mode: Mode;
   linenum: undefined | number;
